@@ -1,0 +1,9 @@
+{
+  "name": "HK Taxi 車費計算器",
+  "short_name": "HK Taxi",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#eef8ff",
+  "theme_color": "#0b2b3c",
+  "orientation": "portrait"
+}
