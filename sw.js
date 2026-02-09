@@ -1,4 +1,4 @@
-const CACHE_NAME = "tfl-arrivals-v1";
+const CACHE_NAME = "tfl-arrivals-v2";
 const ASSETS = [
   ".",
   "index.html",
