@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LRT Arrival · Light Rail Next Train</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow" id="eyebrow">HK Light Rail · Real-time Arrivals</p>
+          <h1 id="title">LRT Arrival</h1>
+          <p class="subtitle" id="subtitle">Choose route, then station. Live platform + direction updates.</p>
+        </div>
+        <div class="hero-actions">
+          <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="lrt">LRT</button>
+            <button class="mode-btn" data-mode="bus">MTR Bus</button>
+          </div>
+          <div class="lang-toggle">
+            <button class="lang-btn active" data-lang="zh">中文</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls">
+        <label class="field">
+          <span id="routeLabel">路線</span>
+          <select id="routeSelect">
+            <option value="">載入中…</option>
+          </select>
+        </label>
+        <label class="field field-direction" id="directionField">
+          <span id="directionLabel">行車方向</span>
+          <select id="directionSelect" disabled>
+            <option value="">請先選擇路線</option>
+          </select>
+        </label>
+        <label class="field">
+          <span id="stationLabel">車站</span>
+          <select id="stationSelect" disabled>
+            <option value="">請先選擇路線</option>
+          </select>
+        </label>
+        <button id="refreshBtn" class="ghost">手動更新</button>
+      </section>
+
+      <section class="status">
+        <div>
+          <p class="status-label" id="statusLabel">更新時間</p>
+          <p class="status-value" id="lastUpdate">—</p>
+        </div>
+        <div>
+          <p class="status-label" id="nextRefreshLabel">下次自動更新</p>
+          <p class="status-value" id="nextRefresh">—</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2 id="arrivalsTitle">到站資訊</h2>
+          <p id="arrivalsSubtitle">顯示月台與方向，過時資料會自動移除</p>
+        </div>
+        <div id="notice" class="notice hidden"></div>
+        <div class="table" id="arrivalsTable"></div>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
