@@ -1,5 +1,6 @@
 const API_BASE = "https://api.tfl.gov.uk";
 const STORAGE_KEY = "tfl_app_key";
+const APP_VERSION = "1.0.3";
 
 const apiKeyInput = document.getElementById("api-key");
 const queryInput = document.getElementById("stop-query");
@@ -774,6 +775,6 @@ setStatus(t("statusPickStop"));
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js");
+    navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`);
   });
 }
