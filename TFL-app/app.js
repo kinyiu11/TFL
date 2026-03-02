@@ -1,6 +1,6 @@
 const API_BASE = "https://api.tfl.gov.uk";
 const STORAGE_KEY = "tfl_app_key";
-const APP_VERSION = "1.0.3";
+const APP_VERSION = "1.1";
 
 const apiKeyInput = document.getElementById("api-key");
 const queryInput = document.getElementById("stop-query");
@@ -608,34 +608,40 @@ const searchNearbyStops = async () => {
     setStatus(t("statusLocating"));
     const position = await getCurrentPosition();
     const { latitude, longitude } = position.coords;
-    setStatus(t("statusNearbyLoading"));
+    const radii = [1200, 3000, 5000];
+    let normalized = [];
 
-    const url = buildUrl("/StopPoint", {
-      lat: String(latitude),
-      lon: String(longitude),
-      radius: "1200",
-    });
-    const res = await fetch(url);
-    const data = await res.json();
-    const rawStops = Array.isArray(data)
-      ? data
-      : Array.isArray(data.stopPoints)
-        ? data.stopPoints
-        : [];
+    for (const radius of radii) {
+      setStatus(`${t("statusNearbyLoading")} (${radius}m)`);
+      const url = buildUrl("/StopPoint", {
+        lat: String(latitude),
+        lon: String(longitude),
+        radius: String(radius),
+      });
+      const res = await fetch(url);
+      const data = await res.json();
+      const rawStops = Array.isArray(data)
+        ? data
+        : Array.isArray(data.stopPoints)
+          ? data.stopPoints
+          : [];
 
-    const normalized = rawStops
-      .map((item) => ({
-        id: item.naptanId || item.id || "",
-        name: item.commonName || item.name || item.stationName || "Unknown",
-        platformName: item.platformName || extractAdditional(item, "PlatformName") || extractAdditional(item, "Platform"),
-        stopLetter: item.stopLetter || extractAdditional(item, "StopLetter"),
-        indicator: item.indicator || extractAdditional(item, "Direction") || extractAdditional(item, "Indicator"),
-        towards: item.towards || extractAdditional(item, "Towards"),
-        distance: typeof item.distance === "number" ? item.distance : null,
-      }))
-      .filter((item) => item.id)
-      .sort((a, b) => (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER))
-      .slice(0, 15);
+      normalized = rawStops
+        .map((item) => ({
+          id: item.naptanId || item.id || "",
+          name: item.commonName || item.name || item.stationName || "Unknown",
+          platformName: item.platformName || extractAdditional(item, "PlatformName") || extractAdditional(item, "Platform"),
+          stopLetter: item.stopLetter || extractAdditional(item, "StopLetter"),
+          indicator: item.indicator || extractAdditional(item, "Direction") || extractAdditional(item, "Indicator"),
+          towards: item.towards || extractAdditional(item, "Towards"),
+          distance: typeof item.distance === "number" ? item.distance : null,
+        }))
+        .filter((item) => item.id)
+        .sort((a, b) => (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER))
+        .slice(0, 15);
+
+      if (normalized.length) break;
+    }
 
     selectedLine = null;
     routeQueryInput.value = "";
