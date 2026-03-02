@@ -617,6 +617,11 @@ const searchNearbyStops = async () => {
         lat: String(latitude),
         lon: String(longitude),
         radius: String(radius),
+        stopTypes: "NaptanMetroStation,NaptanRailStation,NaptanPublicBusCoachTram",
+        modes: "tube,overground,dlr,elizabeth-line,bus,tram,national-rail",
+        useStopPointHierarchy: "true",
+        includeChildren: "true",
+        includeShell: "true",
       });
       const res = await fetch(url);
       const data = await res.json();
@@ -871,6 +876,32 @@ setStatus(t("statusPickStop"));
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`);
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    navigator.serviceWorker
+      .register(`sw.js?v=${APP_VERSION}`)
+      .then((registration) => {
+        registration.update();
+
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              newWorker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+      })
+      .catch(() => {});
   });
 }
