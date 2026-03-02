@@ -7,6 +7,7 @@ const queryInput = document.getElementById("stop-query");
 const routeQueryInput = document.getElementById("route-query");
 const searchButton = document.getElementById("search");
 const routeSearchButton = document.getElementById("route-search");
+const nearbySearchButton = document.getElementById("nearby-search");
 const clearButton = document.getElementById("clear");
 const refreshButton = document.getElementById("refresh");
 const reselectStopButton = document.getElementById("reselect-stop");
@@ -93,6 +94,7 @@ const i18n = {
     stopHint: "唔揀路線都可以直接查站。",
     routeSearch: "搜尋路線",
     stopSearch: "搜尋站名",
+    nearbySearch: "附近站",
     quickLabel: "快速站名：",
     routeResults: "路線結果",
     stopResults: "站點列表（會顯示月台 / 方向 / 終點提示）",
@@ -142,6 +144,12 @@ const i18n = {
     groupRiver: "River Bus",
     groupNational: "National Rail",
     groupOther: "Other",
+    statusLocating: "讀取你的位置中...",
+    statusNearbyLoading: "搜尋附近站點中...",
+    statusNearbyNone: "附近找不到可用站點。",
+    statusGeoUnsupported: "此裝置不支援定位。",
+    statusGeoDenied: "你拒絕了定位權限，無法搜尋附近站。",
+    statusGeoFailed: "讀取定位失敗，請稍後再試。",
   },
   en: {
     langToggle: "中文",
@@ -167,6 +175,7 @@ const i18n = {
     stopHint: "You can search a stop directly.",
     routeSearch: "Search route",
     stopSearch: "Search stop",
+    nearbySearch: "Nearby",
     quickLabel: "Quick stops:",
     routeResults: "Route results",
     stopResults: "Stops (platform / direction / destination hint)",
@@ -216,6 +225,12 @@ const i18n = {
     groupRiver: "River Bus",
     groupNational: "National Rail",
     groupOther: "Other",
+    statusLocating: "Reading your location...",
+    statusNearbyLoading: "Searching nearby stops...",
+    statusNearbyNone: "No nearby stops found.",
+    statusGeoUnsupported: "Geolocation is not supported on this device.",
+    statusGeoDenied: "Location permission denied.",
+    statusGeoFailed: "Failed to read your location. Please try again.",
   },
 };
 
@@ -278,6 +293,9 @@ const formatStopHint = (stop) => {
   if (stop.stopLetter) parts.push(`${t("labelStop")} ${stop.stopLetter}`);
   if (stop.indicator) parts.push(`${t("labelDirection")} ${stop.indicator}`);
   if (stop.towards) parts.push(`${t("labelTowards")} ${stop.towards}`);
+  if (typeof stop.distance === "number") {
+    parts.push(`${Math.round(stop.distance)}m`);
+  }
   if (!parts.length) parts.push(t("stopMetaFallback"));
   return parts.join(" · ");
 };
@@ -572,6 +590,77 @@ const fetchArrivals = async () => {
   }
 };
 
+const getCurrentPosition = () =>
+  new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("UNSUPPORTED"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 15000,
+    });
+  });
+
+const searchNearbyStops = async () => {
+  try {
+    setStatus(t("statusLocating"));
+    const position = await getCurrentPosition();
+    const { latitude, longitude } = position.coords;
+    setStatus(t("statusNearbyLoading"));
+
+    const url = buildUrl("/StopPoint", {
+      lat: String(latitude),
+      lon: String(longitude),
+      radius: "1200",
+    });
+    const res = await fetch(url);
+    const data = await res.json();
+    const rawStops = Array.isArray(data)
+      ? data
+      : Array.isArray(data.stopPoints)
+        ? data.stopPoints
+        : [];
+
+    const normalized = rawStops
+      .map((item) => ({
+        id: item.naptanId || item.id || "",
+        name: item.commonName || item.name || item.stationName || "Unknown",
+        platformName: item.platformName || extractAdditional(item, "PlatformName") || extractAdditional(item, "Platform"),
+        stopLetter: item.stopLetter || extractAdditional(item, "StopLetter"),
+        indicator: item.indicator || extractAdditional(item, "Direction") || extractAdditional(item, "Indicator"),
+        towards: item.towards || extractAdditional(item, "Towards"),
+        distance: typeof item.distance === "number" ? item.distance : null,
+      }))
+      .filter((item) => item.id)
+      .sort((a, b) => (a.distance ?? Number.MAX_SAFE_INTEGER) - (b.distance ?? Number.MAX_SAFE_INTEGER))
+      .slice(0, 15);
+
+    selectedLine = null;
+    routeQueryInput.value = "";
+    routeSuggestionsEl.classList.remove("visible");
+
+    if (!normalized.length) {
+      stopListEl.innerHTML = "";
+      setStatus(t("statusNearbyNone"));
+      return;
+    }
+
+    renderStops(normalized);
+    setStatus(t("statusPickStop"));
+    stopListEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    if (error?.code === 1) {
+      setStatus(t("statusGeoDenied"), "error");
+    } else if (error?.message === "UNSUPPORTED") {
+      setStatus(t("statusGeoUnsupported"), "error");
+    } else {
+      setStatus(t("statusGeoFailed"), "error");
+    }
+  }
+};
+
 const selectStop = (stop) => {
   selectedStop = stop;
   reselectStopButton.classList.remove("hidden");
@@ -666,6 +755,7 @@ const fetchRouteSuggestions = async () => {
 
 searchButton.addEventListener("click", searchStops);
 routeSearchButton.addEventListener("click", searchLines);
+nearbySearchButton.addEventListener("click", searchNearbyStops);
 queryInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") searchStops();
 });
